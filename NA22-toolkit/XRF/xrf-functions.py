@@ -1,9 +1,10 @@
- # Packages necessary
+# Packages necessary
 # General
 import h5py
 import pandas as pd
 import numpy as np
 import xarray as xr
+from itertools import compress
 
 
 # Fitting
@@ -57,7 +58,8 @@ def input_to_slice(user_input):
 #     2. peaks: list of energies corresponding to each peak (eV)
 #     3. tolerance: percentage of acceptable difference between the database x-ray fluorescence energy and the supplied peak energies
 # * Outputs: 
-#     1. list of matched fluorescence lines showing the peak name, the element, the fluorescence line name, and the energy (eV)
+#     1. matched_fluor_lines: list of matched fluorescence lines showing the peak name, the element, the fluorescence line name, and the energy (eV)
+#     2. matched_df: pandas dataframe of the matches
 def identify_element_match(elements, peaks, tolerance):
     line_name_int = []
     identified_element = []
@@ -66,33 +68,70 @@ def identify_element_match(elements, peaks, tolerance):
     for element in elements:
         xray_line = xdb.xray_lines(element)
         line_names = list(xdb.xray_lines(element))
-
+    
         for i in range(len(line_names)):
             fluor_energy = list(xray_line.values())[i][0] # output fluorscence energy of the selected element in the i-th index
-
+    
             # find fluorscence line that matches to each peak
             for j, peak in enumerate(peaks):
                 largest_value = max(peak,fluor_energy)
                 peak_diff = (abs(fluor_energy - peak)/ largest_value)*100
-
+    
                 # find values within set tolerance threshold percent
                 if peak_diff <= tolerance:
                     identified_element.append(element)
                     line_name_int.append(line_names[i])
                     energy_match.append(float(fluor_energy))
                     matched_peak.append(int(j+1))
-
     
-        
+    # element_emission_line = [item1 + '_' + item2 for item1, item2 in zip(identified_element, line_name_int)]
+    
     # Output list of matched elements, the fluorescence line name, and the energy (eV)
     matched_fluor_lines = sorted([list(a) for a in zip(matched_peak, identified_element, line_name_int, energy_match)])
-
+    
     column_names =  ["Peak #", "Element", "Emission Line", "Energy (eV)"]
     matched_df = pd.DataFrame(data = matched_fluor_lines, columns = column_names)
     
+    # making list in the same order as dataframe
+    line_name_int = matched_df['Emission Line'].tolist()
+    energy_match = matched_df['Energy (eV)'].tolist()
+    
+    # Removing repeats and averaging fluor line of elements with same emission lines (i.e. averaging Ce_Ka1, Ce_Ka2, etc. to make single peak representing Ce_Ka)
+    unique_peak = matched_df['Peak #'].unique()
+    matched_peaks = []
+    matched_energy = []
+    line_name = []
+    matched_element = []
+    for i in unique_peak:
+        idx_peak = matched_df['Peak #'] == i
+        peak_elements = matched_df['Element'][idx_peak]
+        for j in set(peak_elements):
+            idx_element = matched_df['Element'] == j
+            idx_peak_element = idx_peak & idx_element
+            
+            if sum(idx_peak_element) > 1: 
+                matched_peaks.append(i)
+                matched_element.append(j)
+                energy_int = list(compress(energy_match,idx_peak_element))
+                matched_energy.append(np.mean(energy_int))
+                line_names = list(compress(line_name_int,idx_peak_element))
+                line_name.append(line_names[0][:-1])
+            if sum(idx_peak_element) == 1:
+                matched_peaks.append(i)
+                matched_element.append(j)
+                energy_int = list(compress(energy_match,idx_peak_element))
+                matched_energy.append(np.mean(energy_int))
+                line_name.extend(list(compress(line_name_int,idx_peak_element)))
+    
+    
+    # Output list of matched elements, the fluorescence line name, and the energy (eV)
+    matched_fluor_lines = sorted([list(a) for a in zip(matched_peaks, matched_element, line_name, matched_energy)])
+    
+    column_names =  ["Peak #", "Element", "Emission Line", "Energy (eV)"]
+    matched_df = pd.DataFrame(data = matched_fluor_lines, columns = column_names)
 
     
-    return matched_fluor_lines
+    return matched_fluor_lines, matched_df
 
 
 ########## Defining Gaussians ##########
@@ -431,7 +470,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
             ########## Identify elements ##########
             # identify fluorescent line energy that most closely matches the determined peaks
             tolerance = 1 # allowed difference in percent
-            matched_peaks = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
+            matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
             # Plotting vertical lines for matched peaks and labeled with element symbol
             for i in range(len(matched_peaks)):
                 fig1.add_vline(x = matched_peaks[i][3]/1000, line_width = 1.5, line_dash = 'dash', annotation_text = matched_peaks[i][1]+'_'+matched_peaks[i][2])
@@ -565,7 +604,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     max_energy = incident_energy + 0.8 # incident energy
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
-    max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
+    
 
 
     ########## Detector data ##########
@@ -574,6 +613,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
     ########## Total summed spectrum ##########
     sum_data = np.sum(data, axis = (0,1))
+    max_idx = np.argmax(sum_data) # determine the maximum index based on the location of the compton scattering peak
     sum_data = sum_data[min_idx:max_idx]
     
     
@@ -615,7 +655,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
 
     ########## Find peaks in data using parameter thresholds ##########
-    peaks, properties = find_peaks(AOI_bkg_sub[:compton_peak_idx], prominence = prom, height = height, distance = dist)
+    peaks, properties = find_peaks(AOI_bkg_sub, prominence = prom, height = height, distance = dist)
         
 
     ########## Identify elements ##########
@@ -636,27 +676,27 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
 
     ########## Final Plot ##########
-    fig1 = go.Figure(data = go.Scatter(x = energy_int[:compton_peak_idx], y = AOI[:compton_peak_idx], mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,energy_int[compton_peak_idx]])
+    fig1 = go.Figure(data = go.Scatter(x = energy_int, y = AOI, mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,energy_int[compton_peak_idx]])
     fig1.update_layout(title = 'AOI Spectrum for '+filename[-26:-13],
                        width = 1600,
                        height = 800,
                        font = dict(size = 20))
     
     # Plot Background subtracted AOI spectrum
-    fig1.add_trace(go.Scatter(x = energy_int[:compton_peak_idx], y = AOI_bkg_sub[:compton_peak_idx], mode = 'lines', name = 'AOI bkg subtracted'))
+    fig1.add_trace(go.Scatter(x = energy_int, y = AOI_bkg_sub, mode = 'lines', name = 'AOI bkg subtracted'))
                 
     # Plot total summed spectrum 
-    fig1.add_trace(go.Scatter(x = energy_int[:compton_peak_idx], y = sum_data[:compton_peak_idx], mode = 'lines', name = 'Summed Spectra'))
+    fig1.add_trace(go.Scatter(x = energy_int, y = sum_data, mode = 'lines', name = 'Summed Spectra'))
 
     # Plot background spectrum
-    fig1.add_trace(go.Scatter(x = energy_int[:compton_peak_idx], y = background[:compton_peak_idx], mode = 'lines', name = 'Background Spectra'))
+    fig1.add_trace(go.Scatter(x = energy_int, y = background, mode = 'lines', name = 'Background Spectra'))
 
     # Plot baseline spectrum
-    fig1.add_trace(go.Scatter(x = energy_int[:compton_peak_idx], y = baseline[:compton_peak_idx], mode = 'lines', name = 'Baseline Spectra'))
+    fig1.add_trace(go.Scatter(x = energy_int, y = baseline, mode = 'lines', name = 'Baseline Spectra'))
 
     # Plot peak and background fits
-    fig1.add_trace(go.Scatter(x = energy_int[:compton_peak_idx], y = peak_fit[:compton_peak_idx], mode = 'lines', name ='AOI Spectra Fit'))
-    fig1.add_trace(go.Scatter(x = energy_int[:compton_peak_idx], y = bkg_fit, mode = 'lines', name = 'AOI Spectra Bkg Fit'))
+    fig1.add_trace(go.Scatter(x = energy_int, y = peak_fit, mode = 'lines', name ='AOI Spectra Fit'))
+    fig1.add_trace(go.Scatter(x = energy_int, y = bkg_fit, mode = 'lines', name = 'AOI Spectra Bkg Fit'))
 
     # Plot points identified as peaks
     fig1.add_trace(go.Scatter(x = energy_int[peaks], y = peak_fit[peaks],mode = 'markers+text', name = 'Peak fit', text = labels))
@@ -670,7 +710,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     ########## Identify elements ##########
     # identify fluorescent line energy that most closely matches the determined peaks
     tolerance = 1 # allowed difference in percent
-    matched_peaks = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
+    matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
     # Plotting vertical lines for matched peaks and labeled with element symbol
     for i in range(len(matched_peaks)):
         fig1.add_vline(x = matched_peaks[i][3]/1000, line_width = 1.5, line_dash = 'dash', annotation_text = matched_peaks[i][1]+'_'+matched_peaks[i][2])
@@ -715,40 +755,4 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
    
    
     return detector_data, fig1, peak_fit_params, x_pos, y_pos, matched_peaks
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
