@@ -313,6 +313,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     
     ########## Plotting whole detector view to identify AOI ##########
     temp = np.sum(data,axis = (2))
+    
     detector_2D_map_fig = go.Figure(data = go.Heatmap(z = temp, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
     detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
                                       title_x = 0.5,
@@ -323,6 +324,29 @@ def AOI_particle_analysis(filename, min_energy, elements):
                                       yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
     
     detector_2D_map_fig.show()
+
+    ########## Handling bad pixels ##########
+    user_input = input("Smooth over bad pixels? (Yes or No):")
+    if user_input.lower() == "yes":
+        # get number of values to extract
+        user_input = input("Input integer value for number of bad pixels based on number unique xy coordinates showing distinctly lower intensity:")
+        k = int(user_input) # number of values to be extracted 
+        idx_flat = np.argpartition(temp.flatten(),k)[:k] # index of k lowest values 
+        idx_2d = np.unravel_index(idx_flat,temp.shape)
+        temp[idx_2d] = np.mean(temp) # new detecotr data without dead pixels 
+
+        # plot new data
+        detector_2D_map_fig = go.Figure(data = go.Heatmap(z = temp, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
+        detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
+                                          title_x = 0.5,
+                                          width = 500,
+                                          height = 500,
+                                          font = dict(size = 20),
+                                          xaxis = dict(title = 'X-axis'),
+                                          yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+        
+        detector_2D_map_fig.show()
+        
 
     ######### Selecting area of interest based on PyXRF mappings ##########
     # # x-direction
@@ -609,7 +633,38 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
 
     ########## Detector data ##########
     detector_data = np.sum(data,axis = (2))
-    zoomed_detector_data = detector_data[AOI_y,AOI_x]
+    detector_2D_map_fig = go.Figure(data = go.Heatmap(z = detector_data, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
+    detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
+                                      title_x = 0.5,
+                                      width = 500,
+                                      height = 500,
+                                      font = dict(size = 20),
+                                      xaxis = dict(title = 'X-axis'),
+                                      yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+    
+    detector_2D_map_fig.show()
+
+    ########## Handling bad pixels ##########
+    user_input = input("Smooth over bad pixels? (Yes or No):")
+    if user_input.lower() == "yes":
+        # get number of values to extract
+        user_input = input("Input integer value for number of bad pixels based on number unique xy coordinates showing distinctly lower intensity:")
+        k = int(user_input) # number of values to be extracted 
+        idx_flat = np.argpartition(detector_data.flatten(),k)[:k] # index of k lowest values 
+        idx_2d = np.unravel_index(idx_flat,detector_data.shape)
+        detector_data[idx_2d] = np.mean(detector_data) # new detecotr data without dead pixels 
+
+        # plot new data
+        detector_2D_map_fig = go.Figure(data = go.Heatmap(z = detector_data, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
+        detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
+                                          title_x = 0.5,
+                                          width = 500,
+                                          height = 500,
+                                          font = dict(size = 20),
+                                          xaxis = dict(title = 'X-axis'),
+                                          yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+        
+        detector_2D_map_fig.show()
     
     ########## Total summed spectrum ##########
     sum_data = np.sum(data, axis = (0,1))
@@ -755,4 +810,3 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
    
    
     return detector_data, fig1, peak_fit_params, x_pos, y_pos, matched_peaks
-
