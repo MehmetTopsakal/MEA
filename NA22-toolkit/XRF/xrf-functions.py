@@ -304,11 +304,11 @@ def AOI_particle_analysis(filename, min_energy, elements):
     max_energy = incident_energy + 0.8 # incident energy
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
-    max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
 
 
     # Total summed spectrum
     sum_data = np.sum(data, axis = (0,1))
+    max_idx = np.argmax(sum_data) # determine the maximum index based on the location of the compton scattering peak
     sum_data = sum_data[min_idx:max_idx]
     
     ########## Plotting whole detector view to identify AOI ##########
