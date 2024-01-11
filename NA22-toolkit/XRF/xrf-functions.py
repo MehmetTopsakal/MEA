@@ -683,6 +683,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
     ########## Total summed spectrum ##########
     sum_data = np.sum(data, axis = (0,1))
+    sum_data = sum_data[min_idx:max_idx]
     
     
     ######### Setting area of interest ##########
