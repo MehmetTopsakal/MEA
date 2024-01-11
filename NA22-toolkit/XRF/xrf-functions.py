@@ -321,7 +321,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
                                       height = 500,
                                       font = dict(size = 20),
                                       xaxis = dict(title = 'X-axis'),
-                                      yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+                                      yaxis = dict(title = 'Y-axis'))
     
     detector_2D_map_fig.show()
 
@@ -343,7 +343,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
                                           height = 500,
                                           font = dict(size = 20),
                                           xaxis = dict(title = 'X-axis'),
-                                          yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+                                          yaxis = dict(title = 'Y-axis'))
         
         detector_2D_map_fig.show()
         
@@ -655,7 +655,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
                                       height = 500,
                                       font = dict(size = 20),
                                       xaxis = dict(title = 'X-axis'),
-                                      yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+                                      yaxis = dict(title = 'Y-axis'))
     
     detector_2D_map_fig.show()
 
@@ -677,7 +677,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
                                           height = 500,
                                           font = dict(size = 20),
                                           xaxis = dict(title = 'X-axis'),
-                                          yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+                                          yaxis = dict(title = 'Y-axis'))
         
         detector_2D_map_fig.show()
     
@@ -880,7 +880,7 @@ def extract_detector_data(filename):
                                       height = 500,
                                       font = dict(size = 20),
                                       xaxis = dict(title = 'X-axis'),
-                                      yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+                                      yaxis = dict(title = 'Y-axis'))
     
     detector_2D_map_fig.show()
     
@@ -902,7 +902,7 @@ def extract_detector_data(filename):
                                           height = 500,
                                           font = dict(size = 20),
                                           xaxis = dict(title = 'X-axis'),
-                                          yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+                                          yaxis = dict(title = 'Y-axis'))
         
         detector_2D_map_fig.show()
     
