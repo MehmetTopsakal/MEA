@@ -304,11 +304,11 @@ def AOI_particle_analysis(filename, min_energy, elements):
     max_energy = incident_energy + 0.8 # incident energy
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
+    max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
 
 
     # Total summed spectrum
     sum_data = np.sum(data, axis = (0,1))
-    max_idx = np.argmax(sum_data) # determine the maximum index based on the location of the compton scattering peak
     sum_data = sum_data[min_idx:max_idx]
     
     ########## Plotting whole detector view to identify AOI ##########
@@ -367,6 +367,10 @@ def AOI_particle_analysis(filename, min_energy, elements):
     AOI = AOI[min_idx:max_idx]
     energy_int = energy[min_idx:max_idx]
     
+    
+    
+    
+    
 
     ######### Selecting background area based on PyXRF mappings ##########
 
@@ -388,6 +392,16 @@ def AOI_particle_analysis(filename, min_energy, elements):
     background = background[min_idx:max_idx]
 
 
+    # Extracting only the data up to the compton peak
+    max_idx = np.argmax(AOI) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
+    AOI = AOI[:max_idx]
+    background = background[:max_idx]
+    max_energy = energy_int[max_idx]
+    energy_int = energy_int[:max_idx]
+    sum_data = sum_data[:max_idx]
+    
+
+    
     # Background subtracted AOI
     baseline = arpls(background) # Baseline of AOI spectrum
     AOI_bkg_sub = AOI - background
@@ -550,7 +564,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
         ########## Identify elements ##########
         # identify fluorescent line energy that most closely matches the determined peaks
         tolerance = 1 # allowed difference in percent
-        matched_peaks = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
+        matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
         # Plotting vertical lines for matched peaks and labeled with element symbol
         for i in range(len(matched_peaks)):
             fig1.add_vline(x = matched_peaks[i][3]/1000, line_width = 1.5, line_dash = 'dash', annotation_text = matched_peaks[i][1]+'_'+matched_peaks[i][2])
@@ -594,7 +608,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
         
         
 
-    return detector_2D_map_fig, fig1, peak_fit_params, x_pos, y_pos, x_int, y_int, matched_peaks
+    return detector_2D_map_fig, fig1, peak_fit_params
 
 
 
@@ -628,6 +642,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     max_energy = incident_energy + 0.8 # incident energy
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
+    max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
     
 
 
@@ -668,19 +683,17 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
     ########## Total summed spectrum ##########
     sum_data = np.sum(data, axis = (0,1))
-    max_idx = np.argmax(sum_data) # determine the maximum index based on the location of the compton scattering peak
-    sum_data = sum_data[min_idx:max_idx]
     
     
     ######### Setting area of interest ##########
     AOI_data = data[AOI_y, AOI_x, :]
     
+    
     # Sum spectrum in selected area
     AOI = np.sum(AOI_data, axis=(0,1))
     AOI = AOI[min_idx:max_idx]
-    compton_peak_idx = np.argmax(AOI)
     energy_int = energy[min_idx:max_idx]
-
+    
     
     ########## Position axes ##########
     # whole positions
@@ -700,10 +713,22 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     background = np.sum(bkg_data, axis=(0,1))
     background = background[min_idx:max_idx]
 
+
+    # Extracting only the data up to the compton peak
+    max_idx = np.argmax(AOI) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
+    AOI = AOI[:max_idx]
+    background = background[:max_idx]
+    max_energy = energy_int[max_idx]
+    energy_int = energy_int[:max_idx]
+    sum_data = sum_data[:max_idx]
+    
+
     # Background subtracted AOI
     baseline = arpls(background) # Baseline of AOI spectrum
     AOI_bkg_sub = AOI - background
     AOI_bkg_sub[AOI_bkg_sub <= 0] = 0
+
+    
 
     # add baseline to AOI spectrum
     AOI_bkg_sub = AOI_bkg_sub + baseline
@@ -731,7 +756,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
 
     ########## Final Plot ##########
-    fig1 = go.Figure(data = go.Scatter(x = energy_int, y = AOI, mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,energy_int[compton_peak_idx]])
+    fig1 = go.Figure(data = go.Scatter(x = energy_int, y = AOI, mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,max_energy])
     fig1.update_layout(title = 'AOI Spectrum for '+filename[-26:-13],
                        width = 1600,
                        height = 800,
