@@ -624,7 +624,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
 #        can be used later to plot the results        
 #     3. peak_fit_params: parameters used to define the gaussian fit of peaks in background subtracted partilce spectrum
 def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, prom, height, dist, energy_range):
-    ########## Load data filenin variable ##########
+    ########## Load data file in variable ##########
     with h5py.File(filename, 'r') as file:
         data = file['xrfmap/detsum/counts'][:]
         pos_data = file['xrfmap/positions/pos'][:]
@@ -836,3 +836,75 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
    
    
     return detector_data, fig1, peak_fit_params, x_pos, y_pos, matched_peaks
+
+
+
+
+########## Extract detector image data of selected file ##########
+# * Inputs
+#     1. filename: file path to hdf5 (.h5) file containing total scan data
+# * Outputs
+#     1. detector_data
+#     2. x_pos, y_pos: x and y positions extracted from hdf5 file
+def extract_detector_data(filename):
+    ########## Load data file in variable ##########
+    with h5py.File(filename, 'r') as file:
+        data = file['xrfmap/detsum/counts'][:]
+        pos_data = file['xrfmap/positions/pos'][:]
+        group_name = 'xrfmap/scan_metadata'
+        if group_name in file:
+            group = file[group_name]
+            attributes = dict(group.attrs)
+            incident_energy = attributes['instrument_mono_incident_energy'] # keV
+        else:
+            print(f"Group '{group_name}' not found in the HDF5 file.")
+
+    
+    ########## Use incident X-ray energy to define energy range of interest ##########
+    max_energy = incident_energy + 0.8 # incident energy
+    energy = 0.01*np.arange(data.shape[2])
+    min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
+    max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
+
+    ########## Position axes ##########
+    # whole positions
+    x_pos = np.linspace(pos_data[0].min(),pos_data[0].max(),data.shape[1])
+    y_pos = np.linspace(pos_data[1].min(),pos_data[1].max(),data.shape[1])
+    
+    ########## Detector data ##########
+    detector_data = np.sum(data,axis = (2))
+    detector_2D_map_fig = go.Figure(data = go.Heatmap(z = detector_data, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
+    detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
+                                      title_x = 0.5,
+                                      width = 500,
+                                      height = 500,
+                                      font = dict(size = 20),
+                                      xaxis = dict(title = 'X-axis'),
+                                      yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+    
+    detector_2D_map_fig.show()
+    
+    ########## Handling bad pixels ##########
+    user_input = input("Smooth over bad pixels? (Yes or No):")
+    if user_input.lower() == "yes":
+        # get number of values to extract
+        user_input = input("Input integer value for number of bad pixels based on number unique xy coordinates showing distinctly lower intensity:")
+        k = int(user_input) # number of values to be extracted 
+        idx_flat = np.argpartition(detector_data.flatten(),k)[:k] # index of k lowest values 
+        idx_2d = np.unravel_index(idx_flat,detector_data.shape)
+        detector_data[idx_2d] = np.mean(detector_data) # new detecotr data without dead pixels 
+    
+        # plot new data
+        detector_2D_map_fig = go.Figure(data = go.Heatmap(z = detector_data, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
+        detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
+                                          title_x = 0.5,
+                                          width = 500,
+                                          height = 500,
+                                          font = dict(size = 20),
+                                          xaxis = dict(title = 'X-axis'),
+                                          yaxis = dict(title = 'Y-axis', autorange = 'reversed'))
+        
+        detector_2D_map_fig.show()
+    
+    return detector_data, x_pos, y_pos
+
