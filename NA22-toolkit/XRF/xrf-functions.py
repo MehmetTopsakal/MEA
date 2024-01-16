@@ -737,7 +737,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
 
     ########## Identify elements ##########
     # identify fluorescent line energy that most closely matches the determined peaks
-    tolerance = 1 # allowed difference in percent
+    tolerance = 2 # allowed difference in percent
     matched_peaks = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
     
     
