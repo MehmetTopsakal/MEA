@@ -349,13 +349,13 @@ def AOI_particle_analysis(filename, min_energy, elements):
         
 
     ######### Selecting area of interest based on PyXRF mappings ##########
-    # # x-direction
+    # # y-direction
     user_input = input("Utilizing the detector map outputted, enter x values for area of interest (AOI) in slice format (e.g., '1:5'):")
     detector_ROI_columns = input_to_slice(user_input)
-    detector_ROI_columns = slice(detector_ROI_columns.start +1, detector_ROI_columns.stop+1)
+    detector_ROI_columns = slice(detector_ROI_columns.start, detector_ROI_columns.stop)
     
     
-    # # y-direction
+    # # x-direction
     user_input = input("Utilizing the detector map outputted, enter y values for area of interest (AOI) in slice format (e.g., '1:5'):")
     detector_ROI_rows = input_to_slice(user_input)
     detector_ROI_rows = slice(detector_ROI_rows.start-1,detector_ROI_rows.stop-1)
@@ -378,12 +378,12 @@ def AOI_particle_analysis(filename, min_energy, elements):
 
     ######### Selecting background area based on PyXRF mappings ##########
 
-    # # x-direction
+    # # y-direction
     user_input = input("Utilizing the detector map outputted, enter x values for area containing background spectra in slice format (e.g., '1:5'):")
     detector_ROI_columns = input_to_slice(user_input)
-    detector_ROI_columns = slice(detector_ROI_columns.start +1, detector_ROI_columns.stop+1)
+    detector_ROI_columns = slice(detector_ROI_columns.start, detector_ROI_columns.stop)
     
-    # # y-direction
+    # # x-direction
     user_input = input("Utilizing the detector map outputted, enter y values for area containing background spectra in slice format (e.g., '1:5'):")
     detector_ROI_rows = input_to_slice(user_input)
     detector_ROI_rows = slice(detector_ROI_rows.start-1,detector_ROI_rows.stop-1)
@@ -710,6 +710,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
 
     ######### Setting background area ##########
     # identify background spectrum
+    
     bkg_data = data[BKG_y, BKG_x, :]
     
     # Sum background spectrum in selected area
