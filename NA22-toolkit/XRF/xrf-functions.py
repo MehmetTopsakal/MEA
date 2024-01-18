@@ -358,7 +358,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     # # x-direction
     user_input = input("Utilizing the detector map outputted, enter y values for area of interest (AOI) in slice format (e.g., '1:5'):")
     detector_ROI_rows = input_to_slice(user_input)
-    detector_ROI_rows = slice(detector_ROI_rows.start+1,detector_ROI_rows.stop+1)
+    detector_ROI_rows = slice(detector_ROI_rows.start,detector_ROI_rows.stop)
     
     
     AOI_data = data[detector_ROI_rows, detector_ROI_columns, :]
@@ -372,9 +372,6 @@ def AOI_particle_analysis(filename, min_energy, elements):
     energy_int = energy[min_idx:max_idx]
     
     
-    
-    
-    
 
     ######### Selecting background area based on PyXRF mappings ##########
 
@@ -386,7 +383,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     # # x-direction
     user_input = input("Utilizing the detector map outputted, enter y values for area containing background spectra in slice format (e.g., '1:5'):")
     detector_ROI_rows = input_to_slice(user_input)
-    detector_ROI_rows = slice(detector_ROI_rows.start+1,detector_ROI_rows.stop+1)
+    
 
     # identify background spectrum
     bkg_data = data[detector_ROI_rows, detector_ROI_columns, :]
@@ -689,6 +686,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
     
     ######### Setting area of interest ##########
+    AOI_x = slice(AOI_x.start+1,AOI_x.stop+1)
     AOI_data = data[AOI_y, AOI_x, :]
     
     
@@ -710,7 +708,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
 
     ######### Setting background area ##########
     # identify background spectrum
-    
+    BKG_x = slice(BKG_x.start+1, BKG_x.stop+1)
     bkg_data = data[BKG_y, BKG_x, :]
     
     # Sum background spectrum in selected area
