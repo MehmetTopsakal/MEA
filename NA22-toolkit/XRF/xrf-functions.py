@@ -46,7 +46,7 @@ def input_to_slice(user_input):
         
 
         # Create and return the slice
-        return slice(start, stop)
+        return slice(start+1, stop+1)
     except ValueError:
         print("Invalid input. Please use the format 'start:stop'.")
 
