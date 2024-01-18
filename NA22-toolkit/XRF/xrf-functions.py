@@ -739,7 +739,6 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     ########## Find peaks in data using parameter thresholds ##########
     peaks, properties = find_peaks(AOI_bkg_sub, prominence = prom, height = height, distance = dist)
         
-
        
     
     ########## Fit spectra and plot results ##########
@@ -753,10 +752,6 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     labels = []
     for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
 
-    # ########## Identify elements ##########
-    # # identify fluorescent line energy that most closely matches the determined peaks
-    # tolerance = 1.5 # allowed difference in percent
-    # matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
 
     ########## Final Plot ##########
     fig1 = go.Figure(data = go.Scatter(x = energy_int, y = AOI, mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,max_energy])
