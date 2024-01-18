@@ -660,22 +660,22 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     detector_2D_map_fig.show()
 
     
-        k = bad_pixels # number of values to be extracted 
-        idx_flat = np.argpartition(detector_data.flatten(),k)[:k] # index of k lowest values 
-        idx_2d = np.unravel_index(idx_flat,detector_data.shape)
-        detector_data[idx_2d] = np.mean(detector_data) # new detecotr data without dead pixels 
+    k = bad_pixels # number of values to be extracted 
+    idx_flat = np.argpartition(detector_data.flatten(),k)[:k] # index of k lowest values 
+    idx_2d = np.unravel_index(idx_flat,detector_data.shape)
+    detector_data[idx_2d] = np.mean(detector_data) # new detecotr data without dead pixels 
 
-        # plot new data
-        detector_2D_map_fig = go.Figure(data = go.Heatmap(z = detector_data, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
-        detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
-                                          title_x = 0.5,
-                                          width = 500,
-                                          height = 500,
-                                          font = dict(size = 20),
-                                          xaxis = dict(title = 'X-axis'),
-                                          yaxis = dict(title = 'Y-axis'))
-        
-        detector_2D_map_fig.show()
+    # plot new data
+    detector_2D_map_fig = go.Figure(data = go.Heatmap(z = detector_data, colorscale = 'Viridis', colorbar = {'exponentformat': 'e'}))
+    detector_2D_map_fig.update_layout(title_text = 'Summed XRF Map for <br>' + filename[-26:-13]+' @ '+str(incident_energy)+' keV', 
+                                      title_x = 0.5,
+                                      width = 500,
+                                      height = 500,
+                                      font = dict(size = 20),
+                                      xaxis = dict(title = 'X-axis'),
+                                      yaxis = dict(title = 'Y-axis'))
+    
+    detector_2D_map_fig.show()
     
     ########## Total summed spectrum ##########
     sum_data = np.sum(data, axis = (0,1))
