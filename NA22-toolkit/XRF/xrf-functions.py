@@ -352,7 +352,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     # # y-direction
     user_input = input("Utilizing the detector map outputted, enter x values for area of interest (AOI) in slice format (e.g., '1:5'):")
     detector_ROI_columns = input_to_slice(user_input)
-    detector_ROI_columns = slice(detector_ROI_columns.start-1, detector_ROI_columns.stop-1)
+    detector_ROI_columns = slice(detector_ROI_columns.start+1, detector_ROI_columns.stop+1)
     
     
     # # x-direction
@@ -381,7 +381,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     # # y-direction
     user_input = input("Utilizing the detector map outputted, enter x values for area containing background spectra in slice format (e.g., '1:5'):")
     detector_ROI_columns = input_to_slice(user_input)
-    detector_ROI_columns = slice(detector_ROI_columns.start-1, detector_ROI_columns.stop-1)
+    detector_ROI_columns = slice(detector_ROI_columns.start+1, detector_ROI_columns.stop+1)
     
     # # x-direction
     user_input = input("Utilizing the detector map outputted, enter y values for area containing background spectra in slice format (e.g., '1:5'):")
