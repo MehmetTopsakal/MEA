@@ -252,8 +252,8 @@ def peak_fitting(x, y, peaks, window):
     
         # setting bounds
         amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(popt[0]))).astype(int)
-        bounds_lower_all.extend([popt[0]-amp_variation,x[peak_index]-0.2,0])
-        bounds_upper_all.extend([popt[0]+amp_variation,x[peak_index]+0.2,np.inf])
+        bounds_lower_all.extend([popt[0]-amp_variation,x[peak_index]-0.2,popt[2]-0.1])
+        bounds_upper_all.extend([popt[0]+amp_variation,x[peak_index]+0.2,popt[2]+0.1])
         
     
     # Set bounds for multigaussian fit
