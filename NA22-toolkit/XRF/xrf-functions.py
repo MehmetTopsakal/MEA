@@ -252,8 +252,8 @@ def peak_fitting(x, y, peaks, window):
 
         # setting bounds
         amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(popt[0]))).astype(int)
-        bounds_lower_all.extend([amplitude-amp_variation,x[peak_index]-0.2,0])
-        bounds_upper_all.extend([amplitude+amp_variation,x[peak_index]+0.2,np.inf])
+        bounds_lower_all.extend([popt[0]-amp_variation,x[peak_index]-0.2,0])
+        bounds_upper_all.extend([popt[0]+amp_variation,x[peak_index]+0.2,np.inf])
 
     
     # Set bounds for multigaussian fit
@@ -564,7 +564,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
 
     ########## Identify elements ##########
     # identify fluorescent line energy that most closely matches the determined peaks
-    tolerance = 2 # allowed difference in percent
+    tolerance = 1.5 # allowed difference in percent
     matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
     # Plotting vertical lines for matched peaks and labeled with element symbol
     for i in range(len(matched_peaks)):
@@ -784,7 +784,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
 
     ########## Identify elements ##########
     # identify fluorescent line energy that most closely matches the determined peaks
-    tolerance = 2 # allowed difference in percent
+    tolerance = 1.5 # allowed difference in percent
     matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
     # Plotting vertical lines for matched peaks and labeled with element symbol
     for i in range(len(matched_peaks)):
