@@ -524,11 +524,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
     
 
-    # Find peaks in fitted data
-    peaks, _ = find_peaks(peak_fit-bkg_fit)
-    # Label peaks
-    labels = []
-    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
+    
 
     ########## Final Plot ##########
     fig1 = go.Figure(data = go.Scatter(x = energy_int, y = AOI, mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,max_energy])
@@ -746,12 +742,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
         
 
-    # Find peaks in fitted data
-    peaks, _ = find_peaks(peak_fit-bkg_fit)
-    # Label peaks
-    labels = []
-    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
-   
+       
 
 
     ########## Final Plot ##########
