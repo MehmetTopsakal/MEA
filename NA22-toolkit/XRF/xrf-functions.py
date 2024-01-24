@@ -249,12 +249,12 @@ def peak_fitting(x, y, peaks, window):
         popt, _ = curve_fit(gaussian, x_peak, y_peak, p0=[amplitude, center, std_dev], maxfev = int(1e8))
         popt_all.extend(popt)
         
-
+    
         # setting bounds
         amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(popt[0]))).astype(int)
         bounds_lower_all.extend([popt[0]-amp_variation,x[peak_index]-0.2,0])
         bounds_upper_all.extend([popt[0]+amp_variation,x[peak_index]+0.2,np.inf])
-
+        
     
     # Set bounds for multigaussian fit
     bounds_all = scipy.optimize.Bounds(lb = bounds_lower_all, ub = bounds_upper_all)
@@ -746,7 +746,11 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
         
 
-   
+    # Find peaks in fitted data
+    peaks, _ = find_peaks(peak_fit-bkg_fit)
+    # Label peaks
+    labels = []
+    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
    
 
 
