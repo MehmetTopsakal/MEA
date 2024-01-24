@@ -1,5 +1,6 @@
 # Packages necessary
 # General
+import scipy
 import h5py
 import pandas as pd
 import numpy as np
@@ -218,58 +219,57 @@ def arpls(y, lam=1e4, ratio=0.01, itermax=1000):
     return z
 
 
-## Find mean square error
-def mean_square_error(observed, predicted):
-    observed = np.array(observed)
-    predicted = np.array(predicted)
-
-    return np.mean((observed - predicted)**2)
 
 
 ## Spectra Fitting Function
 def peak_fitting(x, y, peaks, window):
+    # window to set peak parameters
+    window = int(round(window))
+    
     # Fit background data
-    bkg_fit = arpls(y)
+    baseline_fit = arpls(y)
 
     # Fit Gaussian to each peak
     peak_tails = []
-    combined_gaussian_fit = np.zeros_like(x)
+    bounds_lower_all = []
+    bounds_upper_all = []
     popt_all = []
-    y_bkg_subtracted = y - bkg_fit
-
+    y_baseline_subtracted = y - baseline_fit
+    
     for peak_index in peaks:
         x_peak = x[max(0, peak_index - window): min(len(x), peak_index + window)]
-        y_peak = y_bkg_subtracted[max(0, peak_index - window): min(len(y), peak_index + window)]
+        y_peak = y_baseline_subtracted[max(0, peak_index - window): min(len(y), peak_index + window)]
 
+        # setting gaussian parameters
+        amplitude = max(y_peak)
+        center = x[peak_index]
+        std_dev = np.std(x_peak)
+        
         # Fit Gaussian
-        popt, _ = curve_fit(gaussian, x_peak, y_peak, p0=[max(y_peak), x[peak_index], 1.0], maxfev = int(1e7))
-        popt_all.append(popt)
+        popt, _ = curve_fit(gaussian, x_peak, y_peak, p0=[amplitude, center, std_dev], maxfev = int(1e8))
+        popt_all.extend(popt)
+        
 
-        # Compile Gaussians of each peak 
-        combined_gaussian_fit += gaussian(x, *popt)
+        # setting bounds
+        amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(popt[0]))).astype(int)
+        bounds_lower_all.extend([amplitude-amp_variation,x[peak_index]-0.2,0])
+        bounds_upper_all.extend([amplitude+amp_variation,x[peak_index]+0.2,np.inf])
 
     
-    # Set up while loop to refine fit until convergence
-    tolerance = 1e9
-    error = tolerance + 1
-    TIMEOUT = 60 # set maximum allowed time for while loop refinement to run in seconds
-    start = perf_counter() # start timer
+    # Set bounds for multigaussian fit
+    bounds_all = scipy.optimize.Bounds(lb = bounds_lower_all, ub = bounds_upper_all)
+   
 
-    while error > tolerance: 
-        # Fit results to multi-gaussian function
-        popt, _ = curve_fit(multi_gaussians, x, y_bkg_subtracted, p0 = [popt_all], maxfev = int(1e7))
-        multi_gaussian_fit = multi_gaussians(x, *popt)
+    # Fit results to multi-gaussian function
+    popt, _ = curve_fit(multi_gaussians, x, y_baseline_subtracted, p0 = popt_all, maxfev = int(1e8), bounds= bounds_all)
+    multi_gaussian_fit = multi_gaussians(x, *popt)
         
-        error = mean_square_error(y, multi_gaussian_fit)
 
-        popt_all = popt
+    # final fit with baseline added
+    peak_fit = multi_gaussian_fit + baseline_fit
 
-        if perf_counter() - start > TIMEOUT:
-            break
 
-    peak_fit = multi_gaussian_fit + bkg_fit
-
-    return peak_fit, bkg_fit, popt_all
+    return peak_fit, baseline_fit, popt_all
     
 
 ########## AOI Analysis ##########
@@ -396,7 +396,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
 
 
     # Extracting only the data up to the compton peak
-    max_idx = np.argmax(AOI) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
+    max_idx = np.argmax(sum_data) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
     AOI = AOI[:max_idx]
     background = background[:max_idx]
     max_energy = energy_int[max_idx]
@@ -520,61 +520,59 @@ def AOI_particle_analysis(filename, min_energy, elements):
     
     
     ########## Fit spectra and plot results ##########
-    user_input = input('Fit peaks (Yes or No)?')
-    if user_input.lower() == 'yes':
-        print('Beginning peak fitting')
-        peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
-        
-
-        # Find peaks in fitted data
-        peaks, _ = find_peaks(peak_fit-bkg_fit)
-        # Label peaks
-        labels = []
-        for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
-
-        ########## Final Plot ##########
-        fig1 = go.Figure(data = go.Scatter(x = energy_int, y = AOI, mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,max_energy])
-        fig1.update_layout(title = 'AOI Spectrum for '+filename[-26:-13],
-                           width = 1600,
-                           height = 800,
-                           font = dict(size = 20))
-        
-        # Plot Background subtracted AOI spectrum
-        fig1.add_trace(go.Scatter(x = energy_int, y = AOI_bkg_sub, mode = 'lines', name = 'AOI bkg subtracted'))
-                    
-        # Plot total summed spectrum 
-        fig1.add_trace(go.Scatter(x = energy_int, y = sum_data, mode = 'lines', name = 'Summed Spectra'))
-
-        # Plot background spectrum
-        fig1.add_trace(go.Scatter(x = energy_int, y = background, mode = 'lines', name = 'Background Spectra'))
-
-        # Plot baseline spectrum
-        fig1.add_trace(go.Scatter(x = energy_int, y = baseline, mode = 'lines', name = 'Baseline Spectra'))
-
-        # Plot peak and background fits
-        fig1.add_trace(go.Scatter(x = energy_int, y = peak_fit, mode = 'lines', name ='AOI Spectra Fit'))
-        fig1.add_trace(go.Scatter(x = energy_int, y = bkg_fit, mode = 'lines', name = 'AOI Spectra Bkg Fit'))
-
-        # Plot points identified as peaks
-        fig1.add_trace(go.Scatter(x = energy_int[peaks], y = peak_fit[peaks],mode = 'markers+text', name = 'Peak fit', text = labels))
-
-
-        # Plot formatting
-        fig1.update_yaxes(title_text = 'Intensity (counts)', type = 'log', exponentformat = 'E')
-        fig1.update_xaxes(title_text = 'Energy (keV)')
-        fig1.update_traces(line={'width': 5})
-
-        ########## Identify elements ##########
-        # identify fluorescent line energy that most closely matches the determined peaks
-        tolerance = 2 # allowed difference in percent
-        matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
-        # Plotting vertical lines for matched peaks and labeled with element symbol
-        for i in range(len(matched_peaks)):
-            fig1.add_vline(x = matched_peaks[i][3]/1000, line_width = 1.5, line_dash = 'dash', annotation_text = matched_peaks[i][1]+'_'+matched_peaks[i][2])
-
-        # show figure
-        fig1.show()
+    print('Beginning peak fitting')
+    peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
     
+
+    # Find peaks in fitted data
+    peaks, _ = find_peaks(peak_fit-bkg_fit)
+    # Label peaks
+    labels = []
+    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
+
+    ########## Final Plot ##########
+    fig1 = go.Figure(data = go.Scatter(x = energy_int, y = AOI, mode = 'lines', name = 'AOI Spectra'), layout_xaxis_range = [min_energy,max_energy])
+    fig1.update_layout(title = 'AOI Spectrum for '+filename[-26:-13],
+                       width = 1600,
+                       height = 800,
+                       font = dict(size = 20))
+    
+    # Plot Background subtracted AOI spectrum
+    fig1.add_trace(go.Scatter(x = energy_int, y = AOI_bkg_sub, mode = 'lines', name = 'AOI bkg subtracted'))
+                
+    # Plot total summed spectrum 
+    fig1.add_trace(go.Scatter(x = energy_int, y = sum_data, mode = 'lines', name = 'Summed Spectra'))
+
+    # Plot background spectrum
+    fig1.add_trace(go.Scatter(x = energy_int, y = background, mode = 'lines', name = 'Background Spectra'))
+
+    # Plot baseline spectrum
+    fig1.add_trace(go.Scatter(x = energy_int, y = baseline, mode = 'lines', name = 'Baseline Spectra'))
+
+    # Plot peak and background fits
+    fig1.add_trace(go.Scatter(x = energy_int, y = peak_fit, mode = 'lines', name ='AOI Spectra Fit'))
+    fig1.add_trace(go.Scatter(x = energy_int, y = bkg_fit, mode = 'lines', name = 'AOI Spectra Bkg Fit'))
+
+    # Plot points identified as peaks
+    fig1.add_trace(go.Scatter(x = energy_int[peaks], y = peak_fit[peaks],mode = 'markers+text', name = 'Peak fit', text = labels))
+
+
+    # Plot formatting
+    fig1.update_yaxes(title_text = 'Intensity (counts)', type = 'log', exponentformat = 'E')
+    fig1.update_xaxes(title_text = 'Energy (keV)')
+    fig1.update_traces(line={'width': 5})
+
+    ########## Identify elements ##########
+    # identify fluorescent line energy that most closely matches the determined peaks
+    tolerance = 2 # allowed difference in percent
+    matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
+    # Plotting vertical lines for matched peaks and labeled with element symbol
+    for i in range(len(matched_peaks)):
+        fig1.add_vline(x = matched_peaks[i][3]/1000, line_width = 1.5, line_dash = 'dash', annotation_text = matched_peaks[i][1]+'_'+matched_peaks[i][2])
+
+    # show figure
+    fig1.show()
+
 
     
     
@@ -717,7 +715,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
 
 
     # Extracting only the data up to the compton peak
-    max_idx = np.argmax(AOI) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
+    max_idx = np.argmax(sum_data) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
     AOI = AOI[:max_idx]
     background = background[:max_idx]
     max_energy = energy_int[max_idx]
@@ -738,7 +736,9 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
 
     ########## Find peaks in data using parameter thresholds ##########
     peaks, properties = find_peaks(AOI_bkg_sub, prominence = prom, height = height, distance = dist)
-        
+     # Label peaks
+    labels = []
+    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])    
        
     
     ########## Fit spectra and plot results ##########
@@ -746,11 +746,8 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
         
 
-    # Find peaks in fitted data
-    peaks, _ = find_peaks(peak_fit-bkg_fit)
-    # Label peaks
-    labels = []
-    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
+   
+   
 
 
     ########## Final Plot ##########
