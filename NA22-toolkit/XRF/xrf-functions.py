@@ -252,7 +252,6 @@ def peak_fitting(x, y, peaks, window):
         # Fit Gaussian
         popt, _ = curve_fit(gaussian, x_peak, y_peak, p0=[amplitude, center, std_dev], maxfev = int(1e8), bounds = bounds)
         popt_all.extend(popt)
-        print(amplitude,center,std_dev,popt[0])
         
     
         # setting bounds for cumulative fit
