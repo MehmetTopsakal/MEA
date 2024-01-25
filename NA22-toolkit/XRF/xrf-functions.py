@@ -223,8 +223,6 @@ def arpls(y, lam=1e4, ratio=0.01, itermax=1000):
 
 ## Spectra Fitting Function
 def peak_fitting(x, y, peaks, window):
-    # window to set peak parameters
-    window = int(round(window))
     
     # Fit background data
     baseline_fit = arpls(y)
