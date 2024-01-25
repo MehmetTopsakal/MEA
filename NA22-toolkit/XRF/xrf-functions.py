@@ -515,7 +515,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
     
     # Find peaks in fitted data
-    peaks, properties = find_peaks(peak_fit)
+    peaks, properties = find_peaks(peak_fit-bkg_fit)
     
     # Label peaks
     labels = []
@@ -728,7 +728,13 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     print('Beginning peak fitting')
     peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
         
-
+    # Find peaks in fitted data
+    peaks, properties = find_peaks(peak_fit-bkg_fit)
+    
+    # Label peaks
+    labels = []
+    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
+    
        
 
 
