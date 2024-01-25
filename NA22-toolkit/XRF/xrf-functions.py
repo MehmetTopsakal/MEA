@@ -251,7 +251,7 @@ def peak_fitting(x, y, peaks, window):
         
     
         # setting bounds
-        amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(popt[0]))).astype(int)
+        amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(popt[0])))
         bounds_lower_all.extend([popt[0]-amp_variation,popt[1]-0.1,popt[2]-0.1])
         bounds_upper_all.extend([popt[0]+amp_variation,popt[1]+0.1,popt[2]+0.1])
         
