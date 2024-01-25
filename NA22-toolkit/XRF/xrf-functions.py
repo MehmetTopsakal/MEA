@@ -514,7 +514,12 @@ def AOI_particle_analysis(filename, min_energy, elements):
     print('Beginning peak fitting')
     peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
     
-
+    # Find peaks in fitted data
+    peaks, properties = find_peaks(peak_fit, prominence = prom, height = tall, distance = dist)
+    
+    # Label peaks
+    labels = []
+    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
     
 
     ########## Final Plot ##########
