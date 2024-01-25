@@ -242,13 +242,20 @@ def peak_fitting(x, y, peaks, window):
         amplitude = max(y_peak)
         center = x[peak_index]
         std_dev = np.std(x_peak)
+
+        # setting bounds for single peak fit
+        amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(amplitude)))
+        bounds_lower = [amplitude-amp_variation,center-0.1,std_dev-0.1] 
+        bounds_upper = [amplitude+amp_variation,center+0.1,std_dev+0.1]
+        bounds = scipy.optimize.Bounds(lb = bounds_lower, ub = bounds_upper)
         
         # Fit Gaussian
-        popt, _ = curve_fit(gaussian, x_peak, y_peak, p0=[amplitude, center, std_dev], maxfev = int(1e8))
+        popt, _ = curve_fit(gaussian, x_peak, y_peak, p0=[amplitude, center, std_dev], maxfev = int(1e8), bounds = bounds)
         popt_all.extend(popt)
+        print(amplitude,center,std_dev,popt[0])
         
     
-        # setting bounds
+        # setting bounds for cumulative fit
         amp_variation = 0.5 * 10**np.floor(np.log10(np.abs(popt[0])))
         bounds_lower_all.extend([popt[0]-amp_variation,popt[1]-0.1,popt[2]-0.1])
         bounds_upper_all.extend([popt[0]+amp_variation,popt[1]+0.1,popt[2]+0.1])
