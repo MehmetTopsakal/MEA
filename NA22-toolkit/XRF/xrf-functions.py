@@ -301,7 +301,7 @@ def AOI_particle_analysis(filename, min_energy, elements):
     y_pos = np.linspace(pos_data[1].min(),pos_data[1].max(),data.shape[1])
 
     # Use incident X-ray energy to define energy range of interest 
-    max_energy = incident_energy + 0.8 # incident energy
+    max_energy = incident_energy - 1 # set the maximum energy to about the compton peak 
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
     max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
@@ -393,15 +393,6 @@ def AOI_particle_analysis(filename, min_energy, elements):
     # Sum background spectrum in selected area
     background = np.sum(bkg_data, axis=(0,1))
     background = background[min_idx:max_idx]
-
-
-    # Extracting only the data up to the compton peak
-    max_idx = np.argmax(sum_data) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
-    AOI = AOI[:max_idx]
-    background = background[:max_idx]
-    max_energy = energy_int[max_idx]
-    energy_int = energy_int[:max_idx]
-    sum_data = sum_data[:max_idx]
     
 
     
@@ -636,7 +627,7 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
 
     ########## Use incident X-ray energy to define energy range of interest ##########
-    max_energy = incident_energy + 0.8 # incident energy
+    max_energy = incident_energy - 1 # sets max energy to about the compton peak
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
     max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
@@ -708,15 +699,6 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     # Sum background spectrum in selected area
     background = np.sum(bkg_data, axis=(0,1))
     background = background[min_idx:max_idx]
-
-
-    # Extracting only the data up to the compton peak
-    max_idx = np.argmax(sum_data) # setting max_idx to be the max intensity in the spectrum which should be the compton peak
-    AOI = AOI[:max_idx]
-    background = background[:max_idx]
-    max_energy = energy_int[max_idx]
-    energy_int = energy_int[:max_idx]
-    sum_data = sum_data[:max_idx]
     
 
     # Background subtracted AOI
