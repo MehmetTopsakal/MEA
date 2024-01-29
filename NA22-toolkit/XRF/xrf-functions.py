@@ -15,6 +15,7 @@ from scipy.linalg import cholesky
 from scipy import sparse
 from time import perf_counter
 from scipy.signal import find_peaks, peak_prominences, peak_widths
+from scipy.stats import linregress
 
 
 # Plotting
@@ -271,9 +272,10 @@ def peak_fitting(x, y, peaks, window):
 
     # final fit with baseline added
     peak_fit = multi_gaussian_fit + baseline_fit
+    r_squared = linregress(peak_fit, y).rvalue**2
 
 
-    return peak_fit, baseline_fit, popt_all
+    return peak_fit, baseline_fit, popt_all, r_squared
     
 
 ########## AOI Analysis ##########
@@ -516,8 +518,8 @@ def AOI_particle_analysis(filename, min_energy, elements):
     
     ########## Fit spectra and plot results ##########
     print('Beginning peak fitting')
-    peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
-    
+    peak_fit, bkg_fit, peak_fit_params,r_squared = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
+    print('Peak fit r-squared value is:', r_squared)
     # Find peaks in fitted data
     peaks, properties = find_peaks(peak_fit-bkg_fit)
     
@@ -730,8 +732,8 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
     ########## Fit spectra and plot results ##########
     print('Beginning peak fitting')
-    peak_fit, bkg_fit, peak_fit_params = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
-        
+    peak_fit, bkg_fit, peak_fit_params, r_squared = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
+    print('Peak fit r-squared value is:', r_squared)
     # Find peaks in fitted data
     peaks, properties = find_peaks(peak_fit-bkg_fit)
     
