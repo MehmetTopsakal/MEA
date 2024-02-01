@@ -307,7 +307,9 @@ def AOI_particle_analysis(filename, min_energy, elements):
     y_pos = np.linspace(pos_data[1].min(),pos_data[1].max(),data.shape[1])
 
     # Use incident X-ray energy to define energy range of interest 
-    max_energy = incident_energy - 1 # set the maximum energy to about the compton peak 
+    incident_wavelength = 1.2398e-6/(incident_energy*1000) # convert incident energy to wavelength (hc/lambda)
+    compton_wavelength = 4.86e-12 + incident_wavelength # determine compton wavelength using maximum wavelength differential plus incident 
+    max_energy = 1.2398e-6/compton_wavelength  # convert compton wavelength to energy and set the maximum energy to about the compton peak 
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
     max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
@@ -638,7 +640,9 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     
 
     ########## Use incident X-ray energy to define energy range of interest ##########
-    max_energy = incident_energy - 1 # sets max energy to about the compton peak
+    incident_wavelength = 1.2398e-6/(incident_energy*1000) # convert incident energy to wavelength (hc/lambda)
+    compton_wavelength = 4.86e-12 + incident_wavelength # determine compton wavelength using maximum wavelength differential plus incident 
+    max_energy = 1.2398e-6/compton_wavelength  # convert compton wavelength to energy and set the maximum energy to about the compton peak 
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
     max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
@@ -849,7 +853,9 @@ def extract_detector_data(filename):
 
     
     ########## Use incident X-ray energy to define energy range of interest ##########
-    max_energy = incident_energy + 0.8 # incident energy
+    incident_wavelength = 1.2398e-6/(incident_energy*1000) # convert incident energy to wavelength (hc/lambda)
+    compton_wavelength = 4.86e-12 + incident_wavelength # determine compton wavelength using maximum wavelength differential plus incident 
+    max_energy = 1.2398e-6/compton_wavelength  # convert compton wavelength to energy and set the maximum energy to about the compton peak 
     energy = 0.01*np.arange(data.shape[2])
     min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])
     max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
