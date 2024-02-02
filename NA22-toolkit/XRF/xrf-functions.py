@@ -1062,7 +1062,7 @@ def standard_data_extractor(standard_filename, background_filename, element, are
     
     ########## Add calibration function to plot ##########
     # create a list with two empty handles (or more if needed)
-    handles = [mpl_patches.Rectangle((0, 0), 1, 1, fc="white", ec="white", 
+    handles = [patches.Rectangle((0, 0), 1, 1, fc="white", ec="white", 
                                      lw=0, alpha=0)] * 2
     
     # create the corresponding number of labels (= the text you want to display)
