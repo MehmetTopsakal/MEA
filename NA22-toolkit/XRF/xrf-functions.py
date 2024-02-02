@@ -902,3 +902,186 @@ def extract_detector_data(filename):
     
     return detector_data, x_pos, y_pos
 
+########## Function to Extract information from XRF scan of Standard ##########
+# * **Inputs**
+#   1. standard_filename: filepath to Micromatter standard scan of interest
+#   2. background_filename: filepath to background scan of Mylar blank provided by Micromatter
+#   3. element: list of string element of interest contained on standard scan provided in 'standard_filename'
+#   4. area_rho: area density of element of interest in units of micrograms per cm squared provided by Micromatter
+#   5. scan_area: square area covered by the XRF scan in units of micron squared
+     
+
+# * **Outputs**
+#   1. fig: plotly figure showing the data manipulation and contains all the data shwon in the figure
+#   2. cal_eq: calibration equation for calculating the mass relative to intensity. 
+
+def standard_data_extractor(standard_filename, background_filename, element, area_rho, scan_area, min_energy):  
+    ########## extract standard data ##########
+    with h5py.File(standard_filename, 'r') as file:
+        standard_data = file['xrfmap/detsum/counts'][:]
+        group_name = 'xrfmap/scan_metadata'
+        if group_name in file:
+            group = file[group_name]
+            attributes = dict(group.attrs)
+            incident_energy = attributes['instrument_mono_incident_energy'] # keV
+        else:
+            print(f"Group '{group_name}' not found in the HDF5 file.")
+    
+    
+    # Use incident X-ray energy to define energy range of interest 
+    incident_wavelength = 1.2398e-9/incident_energy # convert incident energy to wavelength (hc/lambda)
+    compton_wavelength = 4.86e-12 + incident_wavelength # determine compton wavelength using maximum wavelength differential plus incident 
+    max_energy = 1.2398e-9/compton_wavelength  # convert compton wavelength to energy and set the maximum energy to about the compton peak 
+    energy = 0.01*np.arange(standard_data.shape[2])
+    max_idx = min([i for i, v in enumerate(energy) if v >= max_energy])
+    min_idx = max([i for i, v in enumerate(energy) if v <= min_energy])    
+    
+    
+    # Total summed spectrum
+    standard_sum_data = np.sum(standard_data, axis = (0,1))
+    standard_sum_data = standard_sum_data[min_idx:max_idx]
+    energy_int = energy[min_idx:max_idx]
+    
+    
+    
+    
+    ########## extract background data ##########
+    with h5py.File(background_filename, 'r') as file:
+        background_data = file['xrfmap/detsum/counts'][:]
+        group_name = 'xrfmap/scan_metadata'
+        if group_name in file:
+            group = file[group_name]
+            attributes = dict(group.attrs)
+            incident_energy = attributes['instrument_mono_incident_energy'] # keV
+        else:
+            print(f"Group '{group_name}' not found in the HDF5 file.")
+    
+    
+    # Total summed spectrum
+    background_sum_data = np.sum(background_data, axis = (0,1))
+    background_sum_data = background_sum_data[min_idx:max_idx]
+    
+    
+    
+    
+    ########## Subtract background from standard #########
+    standard_data = standard_sum_data - background_sum_data
+    standard_data[standard_data <= 0] = 0
+    
+    # define baseline of background and refining baseline by iterating arpls() function
+    baseline = arpls(background_sum_data)
+    std_data_plus_baseline = standard_data + baseline
+    
+    
+    ########## Identify Peaks ##########
+    # find peaks
+    peaks, _ = find_peaks(std_data_plus_baseline, distance = 10)
+    
+    # Label peaks
+    labels = []
+    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
+    
+    ########## Find element of interest ##########
+    # identify fluorescent line energy that most closely matches the determined peaks
+    tolerance = 1.5 # allowed difference in percent
+    matched_peaks, _ = identify_element_match(element, energy_int[peaks]*1000, tolerance)
+    
+    # find peak belonging to element of interest
+    element_int_peaks_standard = [row for row in matched_peaks if row[1] == element[0]] 
+    
+    # remove all peaks except those belonging to element of interest
+    element_peak_idx = [ID[0]-1 for ID in element_int_peaks_standard]
+    peaks = peaks[element_peak_idx]
+    
+    
+        
+        
+    ########## Plot the results to ensure they make sense ##########
+    fig = go.Figure(data = go.Scatter(x = energy_int, y = standard_sum_data, mode = 'lines', name = 'Standard Spectra'), layout_xaxis_range = [min_energy,max_energy])
+    fig.update_layout(title = 'Spectrum for ' + element[0] + ' Standard ' + '(' + standard_filename[-26:-13] + ')',
+                       width = 1600,
+                       height = 800,
+                       font = dict(size = 20))
+    
+    # Plot Background spectrum
+    fig.add_trace(go.Scatter(x = energy_int, y = background_sum_data, mode = 'lines', name = 'Background Spectra'))
+    
+    # Plot bkg subtracted standard spectrum 
+    fig.add_trace(go.Scatter(x = energy_int, y = standard_data, mode = 'lines', name = 'Background subtracted Standard Spectra'))
+    
+    # plot baseline 
+    fig.add_trace(go.Scatter(x = energy_int, y = baseline, mode = 'lines', name = 'Baseline'))
+    
+    # plot standard + baseline
+    fig.add_trace(go.Scatter(x = energy_int, y = std_data_plus_baseline, mode = 'lines', name = 'Bkg subtracted Standard + Baseline'))
+    
+    # plot peaks
+    fig.add_trace(go.Scatter(x = energy_int[peaks], y = std_data_plus_baseline[peaks], mode = 'markers+text', name = 'peak fit', text = labels))
+    
+    # Plotting vertical lines for matched peaks and labeled with element symbol
+    for i in range(len(matched_peaks)):
+        fig.add_vline(x = matched_peaks[i][3]/1000, line_width = 1.5, line_dash = 'dash', annotation_text = matched_peaks[i][1]+'_'+matched_peaks[i][2])
+    
+    
+    # Plot formatting
+    fig.update_yaxes(title_text = 'Intensity (counts)', type = 'log', exponentformat = 'E')
+    fig.update_xaxes(title_text = 'Energy (keV)')
+    fig.update_traces(line={'width': 5})
+    
+    fig.show()
+        
+        
+    
+        
+    ########## Making Calibration curve ##########
+    # extracting peak idx 
+    user_input = input('Input comma seperated peaks of interest (i.e. peaks that clearly align with element of interest fluorescence lines and are present in sample).')
+    peaks_int = list(map(int,user_input.split(',')))
+    peak_int_idx = [x-1 for x in peaks_int]
+    
+    # Calculating relative peak intensity in regard to baseline
+    standard_element_intensity = sum(std_data_plus_baseline[peaks[peak_int_idx]] - baseline[peaks[peak_int_idx]])
+    scan_area = scan_area * 1e-8 # convert micron squared to cm squared
+    element_mass = area_rho * scan_area * 1e6 # output in picograms
+    
+    print(element_mass,'pg of',element[0],'in area of standard captured')
+    
+    # determine calibration curve function
+    cal_eq = np.poly1d(np.polyfit([0, standard_element_intensity],[0, element_mass],1))
+    
+    # plotting calibration curve
+    fig1, ax = plt.subplots()
+    x = np.linspace(0,standard_element_intensity)
+    
+    ax.plot(x, cal_eq(x))
+    plt.xlabel('Intensity (counts)', fontsize = 16)
+    plt.ylabel('Mass (pg)', fontsize = 16)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
+    plt.title('Quantitative Calibration Curve \n for ' + element[0] + ' Standard', fontsize = 18)
+    
+    ########## Add calibration function to plot ##########
+    # create a list with two empty handles (or more if needed)
+    handles = [mpl_patches.Rectangle((0, 0), 1, 1, fc="white", ec="white", 
+                                     lw=0, alpha=0)] * 2
+    
+    # create the corresponding number of labels (= the text you want to display)
+    labels = []
+    labels.append("Calibration Function:")
+    labels.append(str(cal_eq))
+    
+    # create the legend, supressing the blank space of the empty line symbol and the
+    # padding between symbol and label by setting handlelenght and handletextpad
+    legend_properties = {'weight':'bold'}
+    plt.legend(handles, labels, loc='best', fontsize=16, 
+              fancybox=True, framealpha=0.7, 
+              handlelength=0, handletextpad=0,
+              prop = legend_properties)
+    plt.show()
+    
+    return fig, cal_eq
+
+
+
+
+
