@@ -1040,7 +1040,7 @@ def standard_data_extractor(standard_filename, background_filename, element, are
     peak_int_idx = [x-1 for x in peaks_int]
     
     # Calculating relative peak intensity in regard to baseline
-    standard_element_intensity = sum(std_data_plus_baseline[peaks[peak_int_idx]] - baseline[peaks[peak_int_idx]])/incident_energy
+    standard_element_intensity = sum(std_data_plus_baseline[peaks[peak_int_idx]] - baseline[peaks[peak_int_idx]])
     scan_area = scan_area * 1e-8 # convert micron squared to cm squared
     element_mass = area_rho * scan_area * 1e6 # output in picograms
     
