@@ -906,6 +906,7 @@ def extract_detector_data(filename):
 # * **Inputs**
 #   1. standard_filename: filepath to Micromatter standard scan of interest
 #   2. background_filename: filepath to background scan of Mylar blank provided by Micromatter
+#   3. open_air_filename: scan of the beamline with nothing in beampath
 #   3. element: list of string element of interest contained on standard scan provided in 'standard_filename'
 #   4. area_rho: area density of element of interest in units of micrograms per cm squared provided by Micromatter
 #   5. scan_area: square area covered by the XRF scan in units of micron squared
@@ -915,7 +916,7 @@ def extract_detector_data(filename):
 #   1. fig: plotly figure showing the data manipulation and contains all the data shwon in the figure
 #   2. cal_eq: calibration equation for calculating the mass relative to intensity. 
 
-def standard_data_extractor(standard_filename, background_filename, element, area_rho, scan_area, min_energy):  
+def standard_data_extractor(standard_filename, background_filename, open_air_filename, element, area_rho, scan_area, min_energy):  
     ########## extract standard data ##########
     with h5py.File(standard_filename, 'r') as file:
         standard_data = file['xrfmap/detsum/counts'][:]
@@ -1038,23 +1039,48 @@ def standard_data_extractor(standard_filename, background_filename, element, are
     user_input = input('Input comma seperated peaks of interest (i.e. peaks that clearly align with element of interest fluorescence lines and are present in sample).')
     peaks_int = list(map(int,user_input.split(',')))
     peak_int_idx = [x-1 for x in peaks_int]
+
+    # determining open-air contributions from empty beampath 
+    with h5py.File(open_air_filename, 'r') as file:
+        open_air_data = file['xrfmap/detsum/counts'][:]
+
+    open_air_sum_data = np.sum(open_air_data, axis = (0,1))
+    open_air_sum_data = open_air_sum_data[min_idx:max_idx]
+
+    ## Fit gaussian to region corresponding to element of interest
+    params = peak_fitting(energy_int,open_air_sum_data, peaks[peak_int_idx],10)[2]
+    standard_element_integral_params = peak_fitting(energy_int,std_data_plus_baseline, peaks[peak_int_idx], 10)[2]
     
-    # Calculating relative peak intensity in regard to baseline
-    standard_element_intensity = sum(std_data_plus_baseline[peaks[peak_int_idx]] - baseline[peaks[peak_int_idx]])
+    std_amp = standard_element_integral_params[::3]
+    std_stddev = standard_element_integral_params[2::3]
+    amp = params[::3]
+    stddev = params[2::3]
+    
+    open_air_integral = np.zeros(len(peaks_int))
+    std_integral = np.zeros(len(peaks_int))
+    for i in range(len(peaks_int)):
+        open_air_integral[i] = np.sqrt(2*np.pi) * amp[i] * stddev[i]
+        std_integral[i] = np.sqrt(2*np.pi) * std_amp[i] * std_stddev[i]
+        
+    sum_open_air_integral = sum(open_air_integral)
+    standard_element_integral_intensity = sum(std_integral) - sum_open_air_integral
+
+    
+    # Converting standard data
     scan_area = scan_area * 1e-8 # convert micron squared to cm squared
     element_mass = area_rho * scan_area * 1e6 # output in picograms
     
     print(element_mass,'pg of',element[0],'in area of standard captured')
     
     # determine calibration curve function
-    cal_eq = np.poly1d(np.polyfit([0, standard_element_intensity],[0, element_mass],1))
+    cal_eq = np.poly1d(np.polyfit([sum_open_air_integral, standard_element_integral_intensity],[0, element_mass],1))
     
     # plotting calibration curve
     fig1, ax = plt.subplots()
-    x = np.linspace(0,standard_element_intensity)
+    x = np.linspace(0,standard_element_integral_intensity)
     
     ax.plot(x, cal_eq(x))
-    plt.xlabel('Intensity (counts)', fontsize = 16)
+    plt.xlabel('Integral Intensity (counts)', fontsize = 16)
     plt.ylabel('Mass (pg)', fontsize = 16)
     plt.xticks(fontsize = 14)
     plt.yticks(fontsize = 14)
@@ -1079,7 +1105,7 @@ def standard_data_extractor(standard_filename, background_filename, element, are
               prop = legend_properties)
     plt.show()
     
-    return fig, cal_eq
+    return fig, cal_eq, sum_open_air_integral
 
 
 
