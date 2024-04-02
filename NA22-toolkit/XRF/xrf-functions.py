@@ -738,12 +738,12 @@ def AOI_extractor(filename, min_energy, elements, AOI_x, AOI_y, BKG_x, BKG_y, pr
     print('Beginning peak fitting')
     peak_fit, bkg_fit, peak_fit_params, r_squared = peak_fitting(energy_int, AOI_bkg_sub, peaks, dist)
     print('Peak fit r-squared value is:', r_squared)
-    # Find peaks in fitted data
-    peaks, properties = find_peaks(peak_fit-bkg_fit)
+    # # Find peaks in fitted data
+    # peaks, properties = find_peaks(peak_fit-bkg_fit)
     
-    # Label peaks
-    labels = []
-    for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
+    # # Label peaks
+    # labels = []
+    # for i in range(len(peaks)): labels.extend(['Peak '+str(i+1)])
     
        
 
