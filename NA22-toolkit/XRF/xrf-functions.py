@@ -24,6 +24,7 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.patches as patches
+from plotly.subplots import make_subplots
 
 # X-ray database
 import xraydb as xdb
@@ -290,7 +291,7 @@ def peak_fitting(x, y, peaks, window):
 #     2. fig1: HTML figure containing all relevant data/information processed that
 #        can be used later to plot the results        
 #     3. peak_fit_params: parameters used to define the gaussian fit of peaks in background subtracted partilce spectrum
-def AOI_particle_analysis(filename, min_energy, elements):
+def AOI_particle_analysis(filename, min_energy, sample_elements, background_elements):
     ########## Load data filenin variable ##########
     with h5py.File(filename, 'r') as file:
         data = file['xrfmap/detsum/counts'][:]
@@ -355,7 +356,47 @@ def AOI_particle_analysis(filename, min_energy, elements):
                                           yaxis = dict(title = 'Y-axis'))
         
         detector_2D_map_fig.show()
-        
+
+    # plotting detector mapping highlighting location of each sample_element
+    element_2D_map_fig = make_subplots(rows= len(sample_elements), cols=1, subplot_titles = sample_elements)
+    for count,element in enumerate(sample_elements): # loop through each element in the sample
+        xray_data = list(xdb.xray_lines(element).values()) # find the xray data for each sample element
+        element_energy = []
+        for _,line in enumerate(xray_data): # loop through each xray line in each sample element
+            if line[1] >= 0.1 and line[0]< max_energy*1000: # if the line has adequete intensity and below max_energy append to list
+                element_energy = np.append(element_energy,[line[0],line[1],line[2]])
+    
+        element_energy = element_energy.reshape((int(len(element_energy)/3),3)) # reshape to be n x 3 array
+        element_energy = np.array([row for row in element_energy if row[2] == element_energy[0,2]]) # select only the first edge available
+        max_idx_element = np.argmax(element_energy[:,1]) # find maximum intensity of all edge lines
+
+        # setting up an energy range of interest surrounding the highest intensity line i nthe first edge available
+        energy_range_minima = round((float(element_energy[max_idx_element,0]) - 500)/10) 
+        energy_range_maxima = round((float(element_energy[max_idx_element,0]) + 500)/10)
+        energy_range = slice(energy_range_minima, energy_range_maxima)
+
+        # extracting this energy range from the hdf file data
+        element_det_data = data[:, :, energy_range]
+        summed_element_det_data = np.sum(element_det_data, axis=(2))
+
+        # plotting detector map highlighting element of interest's signal
+        element_2D_map_fig.add_trace(go.Heatmap(z = summed_element_det_data), row = count + 1, col = 1 )
+  
+
+    element_2D_map_fig.update_traces(dict(showscale=False, 
+                                          coloraxis=None, 
+                                          colorscale='Viridis'), 
+                                     selector={'type':'heatmap'})
+    
+
+    element_2D_map_fig.update_layout(width = 425, height = len(sample_elements)*500, 
+                                     font = dict(size = 20),
+                                     xaxis = dict(title = 'X-axis'),
+                                     yaxis = dict(title = 'Y-axis'))
+    
+    element_2D_map_fig.show()
+    
+
 
     ######### Selecting area of interest based on PyXRF mappings ##########
     # # y-direction
@@ -511,13 +552,26 @@ def AOI_particle_analysis(filename, min_energy, elements):
             ########## Identify elements ##########
             # identify fluorescent line energy that most closely matches the determined peaks
             tolerance = 1.5 # allowed difference in percent
+            elements = background_elements + sample_elements
             matched_peaks, _ = identify_element_match(elements, energy_int[peaks]*1000, tolerance)
             # Plotting vertical lines for matched peaks and labeled with element symbol
             for i in range(len(matched_peaks)):
                 fig1.add_vline(x = matched_peaks[i][3]/1000, line_width = 1.5, line_dash = 'dash', annotation_text = matched_peaks[i][1]+'_'+matched_peaks[i][2])
             fig1.show()
 
-    
+
+    remove_peaks_q = input("Remove any peaks from consideration (yes or no)?")
+    if remove_peaks_q.lower() == 'yes':
+        user_input = input('Input comma-seperated list of peaks to be removed:')
+        error_peaks_idx = [int(num)-1 for num in user_input.split(',')]
+        # Create a boolean mask to select peaks to keep
+        mask = np.ones(peaks.shape, dtype=bool)
+        mask[error_peaks_idx] = False
+        
+        # Filter the array using the mask
+        peaks = peaks[mask]
+                        
+            
     
     ########## Fit spectra and plot results ##########
     print('Beginning peak fitting')
